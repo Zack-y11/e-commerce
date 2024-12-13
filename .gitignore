@@ -1,0 +1,49 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Dependency directories
+jspm_packages/
+bower_components/
+
+# Build directories
+dist/
+build/
+
+# Environment variables
+.env
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+*.orig
+*.save
+
+# Compiled files
+*.out
+*.class
+*.pyc
+*.pyo
+*.pyd
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib

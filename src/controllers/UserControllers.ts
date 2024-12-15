@@ -132,3 +132,27 @@ export const deleteAccount = async (req: Request, res: Response)=>{
         return;
     }
 }
+//get user profile
+export const getProfile = async (req: Request, res: Response)=>{
+    try{
+        const userIdCookie = req.cookies.id;
+        const userId = JSON.parse(userIdCookie).id;
+        if(!userId){
+            res.status(401).json({message: 'Unauthorized'});
+            return;
+        }
+        const response = await client.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if(response.rows.length == 0){
+            res.status(404).json({message: 'User not found'});
+            return;
+        }
+        const user = response.rows[0];
+        res.status(200).json({message: 'User Profile', user});
+    }catch(e){
+        console.log(e);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+        return;
+    }
+}

@@ -77,32 +77,32 @@ export const deleteCategory = async (req: Request, res: Response) => {
   }
 };
 export const getCategory = async (req: Request, res: Response) => {
-    try {
-        if (!req.params.id) {
-        res.status(400).json({ message: "Bad Request: Missing required data" });
-        return;
-        }
-        const response = await client.query(
-        "SELECT * FROM categories WHERE id = $1",
-        [req.params.id]
-        );
-        res.status(200).json({ category: response.rows[0] });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({
-        message: "Internal Server Error",
-        });
+  try {
+    if (!req.params.id) {
+      res.status(400).json({ message: "Bad Request: Missing required data" });
+      return;
     }
-}
+    const response = await client.query(
+      "SELECT * FROM categories WHERE id = $1",
+      [req.params.id]
+    );
+    res.status(200).json({ category: response.rows[0] });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
 //get all categories
 export const getCategories = async (req: Request, res: Response) => {
-    try {
-        const response = await client.query("SELECT * FROM categories");
-        res.status(200).json({ categories: response.rows });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({
-        message: "Internal Server Error",
-        });
-    }
+  try {
+    const response = await client.query("SELECT * FROM categories");
+    res.status(200).json({ categories: response.rows });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
 };

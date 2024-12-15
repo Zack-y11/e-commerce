@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const createUser = async (req: Request, res: Response)=>{
+export const signup = async (req: Request, res: Response)=>{
     try{
         if (!req.body) {
             res.status(400).json({ message: 'Bad Request: Missing request body' });
@@ -49,7 +49,8 @@ export const login = async (req: Request, res: Response)=>{
         const token = jwt.sign({email: user.email, id: user.id}, process.env.SECRET_KEY!, {expiresIn: '24h'});
         // Set the JWT in an HTTP-only cookie
         res.cookie('token', token, {httpOnly: true, secure: true, sameSite: 'strict'});
-        res.status(200).json({message: 'Login Successful', token});   
+        res.cookie('id', JSON.stringify({ id: user.id}), {httpOnly: false, secure: true, sameSite: 'strict'});
+        res.status(200).json({message: 'Login Successful', token, user});   
     }catch(e){
         console.log(e);
         res.status(500).json({
@@ -65,21 +66,67 @@ export const logout = async (req: Request, res: Response)=>{
     return;
 }
 //update user
-export const updateUser = async (req: Request, res: Response)=>{
-    res.status(200).json({message: 'User Updated Successfully'});
-    // try{
-    //     if(!req.body){
-    //         res.status(400).json({message: 'Bad Request: Missing request body'});
-    //         return;
-    //     }
-    //     const {email, password, firstname, lastname, phone} = req.body;
-    //     const response = await client.query('UPDATE users SET email = $1, password_hash = $2, first_name = $3, last_name = $4, phone = $5 WHERE id = $6', [email, password, firstname, lastname, phone, req.params.id]);
-    //     res.status(200).json({message: 'User Updated Successfully'});
-    // }catch(e){
-    //     console.log(e);
-    //     res.status(500).json({
-    //         message: 'Internal Server Error'
-    //     });
-    //     return;
-    // }
+export const updateAccount = async (req: Request, res: Response) => {
+    try {
+        //check if request body is empty
+
+        if (!req.body) {
+            res.status(400).json({ message: 'Bad Request: Missing request body' });
+            return;
+        }
+        const { email, password, firstname, lastname, phone } = req.body;
+        const userIdCookie = req.cookies.id;
+        //parse userId from cookie
+        const userId = JSON.parse(userIdCookie).id;
+        //check if user is logged in
+        if (!userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+        //fetch user
+        const userResponse = await client.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if (userResponse.rows.length == 0) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+        const user = userResponse.rows[0];
+        let updatedEmail = email || user.email;
+        let updatedPassword = password? await bcrypt.hash(password, 10): user.password_hash;
+        let updatedFirstname = firstname || user.first_name;
+        let updatedLastname = lastname || user.last_name;
+        let updatedPhone = phone || user.phone;
+
+        const response = await client.query(
+            'UPDATE users SET email = $1, password_hash = $2, first_name = $3, last_name = $4, phone = $5 WHERE id = $6',
+            [updatedEmail, updatedPassword, updatedFirstname, updatedLastname, updatedPhone, userId]
+        );
+        res.status(200).json({ message: 'User Updated Successfully' });
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+        return;
+    }
+}
+
+//deleteAccount
+export const deleteAccount = async (req: Request, res: Response)=>{
+    try{
+        const userId = req.cookies.id;
+        if(!userId){
+            res.status(401).json({message: 'Unauthorized'});
+            return;
+        }
+        const response = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        res.clearCookie('token');
+        res.clearCookie('id');
+        res.status(200).json({message: 'Account Deleted Successfully'});
+    }catch(e){
+        console.log(e);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+        return;
+    }
 }

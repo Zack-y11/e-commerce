@@ -113,7 +113,9 @@ export const updateAccount = async (req: Request, res: Response) => {
 //deleteAccount
 export const deleteAccount = async (req: Request, res: Response)=>{
     try{
-        const userId = req.cookies.id;
+        const userIdCookie = req.cookies.id;
+
+        const userId = JSON.parse(userIdCookie).id;
         if(!userId){
             res.status(401).json({message: 'Unauthorized'});
             return;

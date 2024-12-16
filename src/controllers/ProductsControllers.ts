@@ -154,7 +154,10 @@ export const getProduct = async (req: Request, res: Response) => {
       return;
     }
     const response: QueryResult = await client.query(
-      "SELECT * FROM products WHERE sku = $1",
+      `SELECT p.*, c.name as category_name 
+       FROM products p 
+       JOIN categories c ON p.category_id = c.id 
+       WHERE p.sku = $1`,
       [sku]
     );
     res

@@ -3,6 +3,7 @@ import express, { query } from "express";
 import user from "./routes/User.Routes";
 import category from "./routes/Category.Routes";
 import products from "./routes/Products.Routes";
+import carts from "./routes/Carts.Routes";
 import cookieParser from "cookie-parser";
 
 const app = express();
@@ -17,6 +18,7 @@ app.get("/api", (req, res) => {
 app.use("/api", user);
 app.use("/api", products);
 app.use("/api", category);
+app.use("/api", carts);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");

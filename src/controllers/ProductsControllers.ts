@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { client } from "../db/posgres";
 import { QueryResult } from "pg";
+import { IProducts } from "../types/IProducts";
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -19,7 +20,7 @@ export const createProduct = async (req: Request, res: Response) => {
       weight,
       dimensions,
       is_active,
-    } = req.body;
+    } : IProducts= req.body;
     if (
       !sku ||
       !name ||
@@ -87,7 +88,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       weight,
       dimensions,
       is_active,
-    } = req.body;
+    }: IProducts = req.body;
     if (
       !sku ||
       !name ||

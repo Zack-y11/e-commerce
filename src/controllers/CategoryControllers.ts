@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { client } from "../db/posgres";
+import ICategory from "../types/ICategory";
 
 export const createCategory = async (req: Request, res: Response) => {
   try {
@@ -7,7 +8,7 @@ export const createCategory = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing request body" });
       return;
     }
-    const { name, description } = req.body;
+    const { name, description }: ICategory = req.body;
     if (!name) {
       res
         .status(400)
@@ -36,7 +37,7 @@ export const updateCategory = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing request body" });
       return;
     }
-    const { name, description } = req.body;
+    const { name, description } : ICategory = req.body;
     if (!name) {
       res
         .status(400)

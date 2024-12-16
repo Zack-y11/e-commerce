@@ -3,6 +3,7 @@ import { client } from "../db/posgres";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { User } from "../types/User";
 dotenv.config();
 
 export const signup = async (req: Request, res: Response) => {
@@ -10,7 +11,7 @@ export const signup = async (req: Request, res: Response) => {
     if (!req.body) {
       res.status(400).json({ message: "Bad Request: Missing request body" });
     }
-    const { email, password, firstname, lastname, phone } = req.body;
+    const { email, password, firstname, lastname, phone } : User= req.body;
     let hashpasword = await bcrypt.hash(password, 10);
     const response = await client.query(
       "INSERT INTO users (email, password_hash, first_name, last_name, phone) VALUES ($1, $2, $3, $4, $5)",
@@ -36,7 +37,7 @@ export const login = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing request body" });
       return;
     }
-    const { email, password } = req.body;
+    const { email, password }: User = req.body;
     const response = await client.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
@@ -80,6 +81,7 @@ export const login = async (req: Request, res: Response) => {
 //logout
 export const logout = async (req: Request, res: Response) => {
   res.clearCookie("token");
+  res.clearCookie("id");
   res.status(200).json({ message: "Logout Successful" });
   return;
 };
@@ -92,7 +94,7 @@ export const updateAccount = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing request body" });
       return;
     }
-    const { email, password, firstname, lastname, phone } = req.body;
+    const { email, password, firstname, lastname, phone }: User= req.body;
     const userIdCookie = req.cookies.id;
     //parse userId from cookie
     const userId = JSON.parse(userIdCookie).id;

@@ -6,6 +6,7 @@ import products from "./routes/Products.Routes";
 import carts from "./routes/Carts.Routes";
 import shippingAddress from "./routes/Address.Routes";
 import orders from "./routes/Order.Routes"
+import payments from "./routes/Payments.Routes"
 import cookieParser from "cookie-parser";
 
 const app = express();
@@ -23,6 +24,7 @@ app.use("/api", category);
 app.use("/api", carts); 
 app.use("/api", shippingAddress);
 app.use("/api", orders);
+app.use("/api", payments);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");

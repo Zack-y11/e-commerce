@@ -8,12 +8,18 @@ import shippingAddress from "./routes/Address.Routes";
 import orders from "./routes/Order.Routes"
 import payments from "./routes/Payments.Routes"
 import cookieParser from "cookie-parser";
+import cors from 'cors'
 
 const app = express();
 
 connect(); // This will connect to the database
 app.use(express.json());
 app.use(cookieParser());
+app.use(cors({
+  origin: 'http://localhost:8080', // Replace with your frontend URL
+  credentials: true
+}));
+
 
 app.get("/api", (req, res) => {
   res.status(200).json({ message: "Hello World" });

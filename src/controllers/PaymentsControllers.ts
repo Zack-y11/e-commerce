@@ -4,7 +4,6 @@ import stripe from "../helpers/Stripe.Services";
 import { configDotenv } from "dotenv";
 configDotenv();
 
-
 //Get all payments
 export const getPayments = async (
   req: Request,
@@ -45,13 +44,15 @@ export const createPayment = async (
     const customer = await client.query("SELECT * FROM orders WHERE id = $1", [
       order_id,
     ]);
-    if(customer.rows.length === 0) {
-        res.status(404).json({ message: "Order not found" });
+    if (customer.rows.length === 0) {
+      res.status(404).json({ message: "Order not found" });
     }
-    
-    const email = await client.query("SELECT email from users WHERE id = $1", [customer.rows[0].user_id]);
-    if(email.rows.length === 0) {
-        res.status(404).json({ message: "User not found" });
+
+    const email = await client.query("SELECT email from users WHERE id = $1", [
+      customer.rows[0].user_id,
+    ]);
+    if (email.rows.length === 0) {
+      res.status(404).json({ message: "User not found" });
     }
     // Create a test clock for testing scenarios
     const testClock = await stripe.testHelpers.testClocks.create({
@@ -95,9 +96,8 @@ export const createPayment = async (
       return;
     }
 
-    const amount = orderResult.rows[0].total_amount; // Convert to smallest currency unit
-    console.log("amount in decimal:", amount);
-
+    const amount = Math.round(orderResult.rows[0].total_amount * 100); // Convert to smallest currency unit (e.g., cents)
+    console.log("amount in cents:", amount);
     if (amount <= 0) {
       res.status(400).json({ message: "Invalid order amount" });
       return;
@@ -272,7 +272,7 @@ export const deletePayment = async (
       return;
     }
 
-    res.status(204).json({deleted: true});
+    res.status(204).json({ deleted: true });
   } catch (error) {
     console.error("Delete payment error:", error);
     res.status(500).json({

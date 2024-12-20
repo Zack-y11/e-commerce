@@ -179,3 +179,24 @@ export const getProducts = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const getProductsByCategory = async (req: Request, res: Response) => {
+  try {
+    const category = req.params.category;
+    if (!category) {
+      res.status(400).json({ message: "Bad Request: Missing category parameter" });
+      return;
+    }
+    const response: QueryResult = await client.query(
+      `SELECT p.*, c.name as category_name 
+       FROM products p 
+       JOIN categories c ON p.category_id = c.id 
+       WHERE c.name = $1`,
+      [category]
+    );
+    res.status(200).json({ products: response.rows });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}

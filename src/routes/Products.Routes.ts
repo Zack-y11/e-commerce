@@ -6,6 +6,7 @@ import {
   deleteProduct,
   getProduct,
   getProducts,
+  getProductsByCategory
 } from "../controllers/ProductsControllers";
 
 const router = Router();
@@ -17,5 +18,10 @@ router.delete("/products/:sku", auth, deleteProduct);
 //public route
 router.get("/products/:sku", auth, getProduct);
 router.get("/products", auth, getProducts);
+///category/Sample%20Category
+router.get("/products/category/:category", auth, getProductsByCategory);
+
+
+
 
 export default router;

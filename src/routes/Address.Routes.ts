@@ -9,6 +9,7 @@ import {
 
 const router = Router();
 
+//user id is required
 router.get("/shipping-addresses/:id", auth, getShippingAddresses);
 router.post("/shipping-addresses", auth, createShippingAddress);
 router.put("/shipping-addresses/:id", auth, updateShippingAddress);

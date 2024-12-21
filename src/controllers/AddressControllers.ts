@@ -52,20 +52,19 @@ export const createShippingAddress = async (req: Request, res: Response) => {
   }
 };
 
+//user Address
 export const getShippingAddresses = async (req: Request, res: Response) => {
   try {
-    const userCookiesId = req.cookies.id;
-    const address_id = req.params.id;
-
-    if (!userCookiesId) {
-      res.status(401).json({ message: "Unauthorized" });
+    //const userCookiesId = req.cookies.id;
+    const user = req.params.id;
+    if (!user) {
+      res.status(400).json({ message: "User id is required" });
       return;
     }
-    const user_id = JSON.parse(userCookiesId).id;
 
     const response = await client.query(
-      "SELECT * FROM shipping_addresses WHERE user_id = $1 AND id = $2",
-      [user_id, address_id]
+      "SELECT * FROM shipping_addresses WHERE user_id = $1",
+      [user]
     );
     res.status(200).json(response.rows);
   } catch (error) {

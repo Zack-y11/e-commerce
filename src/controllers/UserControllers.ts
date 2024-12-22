@@ -79,9 +79,17 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 //logout
-export const logout = async (req: Request, res: Response) => {
-  res.clearCookie("token");
-  res.clearCookie("id");
+export const logout = async (_: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+  });
+  res.clearCookie("id", {
+    httpOnly: false,
+    secure: true,
+    sameSite: "strict",
+  });
   res.status(200).json({ message: "Logout Successful" });
   return;
 };

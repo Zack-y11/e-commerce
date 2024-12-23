@@ -15,7 +15,7 @@ export const getCarts = async (req: Request, res: Response) => {
 export const createCart = async (req: Request, res: Response) => {
   try {
     const userCookiesId = req.cookies.id;
-    console.log('Cookie received:', userCookiesId);  // Add this line
+    console.log("Cookie received:", userCookiesId); // Add this line
 
     if (!userCookiesId) {
       res.status(401).json({ message: "Unauthorized" });
@@ -52,10 +52,11 @@ export const deleteCart = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
 
-    const cart = await client.query("SELECT * FROM shopping_carts WHERE id = $1", [
-      cartId,
-    ]);
-    
+    const cart = await client.query(
+      "SELECT * FROM shopping_carts WHERE id = $1",
+      [cartId]
+    );
+
     if (cart.rows.length === 0) {
       res.status(404).json({ message: "Cart not found" });
       return;
@@ -73,11 +74,11 @@ export const deleteCart = async (req: Request, res: Response) => {
     });
   }
 };
-//getidCart
+//getCartByUserId
 export const getCartById = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
-    //user id 
+    //user id
     const response = await client.query(
       "SELECT * FROM shopping_carts WHERE user_id = $1",
       [cartId]
@@ -86,12 +87,36 @@ export const getCartById = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Cart not found" });
       return;
     }
-    res.status(200).json({ cart: response.rows[0] });
+    res.status(200).json({ cart: response.rows });
   } catch (error) {
     res.status(500).json({
       error: error,
       message: "Internal Server Error",
     });
+  }
+};
+//select cart_items where cart_id
+export const getCartItems = async (req: Request, res: Response) => {
+  try {
+    const cartId = req.params.id;
+    const cart_items = await client.query(
+      "SELECT * FROM cart_items WHERE cart_id = $1",
+      [cartId]
+    );
+
+    const productIds = cart_items.rows.map((item) => item.product_id);
+    const response = await Promise.all(
+      productIds.map(async (productId) => {
+        const productResponse = await client.query(
+          "SELECT * FROM products WHERE id = $1",
+          [productId]
+        );
+        return productResponse.rows[0];
+      })
+    );
+    res.status(200).json({ items: response });
+  } catch (error) {
+    res.status(500).json({ error: error });
   }
 };
 
@@ -117,7 +142,7 @@ export const addProductToCart = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Product already exists in the cart" });
       return;
     }
-    if(quantity <= 0 || !quantity){
+    if (quantity <= 0 || !quantity) {
       res.status(400).json({ message: "Invalid quantity" });
       return;
     }

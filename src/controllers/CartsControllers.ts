@@ -15,6 +15,12 @@ export const getCarts = async (req: Request, res: Response) => {
 export const createCart = async (req: Request, res: Response) => {
   try {
     const userCookiesId = req.cookies.id;
+    console.log('Cookie received:', userCookiesId);  // Add this line
+
+    if (!userCookiesId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
 
     if (!userCookiesId) {
       res.status(401).json({ message: "Unauthorized" });
@@ -71,8 +77,9 @@ export const deleteCart = async (req: Request, res: Response) => {
 export const getCartById = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
+    //user id 
     const response = await client.query(
-      "SELECT * FROM shopping_carts WHERE id = $1",
+      "SELECT * FROM shopping_carts WHERE user_id = $1",
       [cartId]
     );
     if (response.rows.length == 0) {

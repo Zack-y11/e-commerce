@@ -25,7 +25,6 @@ export const getOrders = async (req: Request, res: Response) => {
 export const createOrder = async (req: Request, res: Response) => {
     try {
         const user_id_cookies  = req.cookies.id;
-        console.log(req.cookies)
         if(!user_id_cookies) {
             res.status(401).json({ message: "Unauthorized" });
             return;

@@ -1,12 +1,17 @@
 import { client } from "../db/posgres";
 import { Request, Response } from "express";
 import ICartItems from "../types/ICartItems";
+import supabase from "../db/db";
 
 //shopping_carts CRUD
 export const getCarts = async (req: Request, res: Response) => {
   try {
-    const response = await client.query("SELECT * FROM shopping_carts");
-    res.status(200).json(response.rows);
+    const { data, error } = await supabase
+      .from('shopping_carts')
+      .select('*');
+      
+    if (error) throw error;
+    res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ error: error });
   }
@@ -15,31 +20,34 @@ export const getCarts = async (req: Request, res: Response) => {
 export const createCart = async (req: Request, res: Response) => {
   try {
     const userCookiesId = req.cookies.id;
-    console.log("Cookie received:", userCookiesId); // Add this line
+    console.log("Cookie received:", userCookiesId);
 
     if (!userCookiesId) {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
-    if (!userCookiesId) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
     const user_id = JSON.parse(userCookiesId).id;
 
-    const user = await client.query("SELECT * FROM users WHERE id = $1", [
-      user_id,
-    ]);
-    if (user.rows.length == 0) {
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user_id)
+      .single();
+
+    if (userError || !user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-    const response = await client.query(
-      "INSERT INTO shopping_carts (user_id) VALUES ($1) RETURNING *",
-      [user_id]
-    );
-    res.status(201).json({ cart: response.rows[0] });
+
+    const { data: cart, error: cartError } = await supabase
+      .from('shopping_carts')
+      .insert([{ user_id }])
+      .select()
+      .single();
+
+    //if (cartError) throw cartError;
+    res.status(201).json({ cart });
   } catch (error) {
     res.status(500).json({
       error: error,
@@ -52,20 +60,24 @@ export const deleteCart = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
 
-    const cart = await client.query(
-      "SELECT * FROM shopping_carts WHERE id = $1",
-      [cartId]
-    );
+    const { data: cart, error: cartError } = await supabase
+      .from('shopping_carts')
+      .select('*')
+      .eq('id', cartId)
+      .single();
 
-    if (cart.rows.length === 0) {
+    if (cartError || !cart) {
       res.status(404).json({ message: "Cart not found" });
       return;
     }
 
-    const response = await client.query(
-      "DELETE FROM shopping_carts WHERE id = $1",
-      [cartId]
-    );
+    const { error: deleteError } = await supabase
+      .from('shopping_carts')
+      .delete()
+      .eq('id', cartId);
+
+    if (deleteError) throw deleteError;
+    
     res.status(200).json({ message: "Cart Deleted Successfully" });
   } catch (error) {
     res.status(500).json({
@@ -112,7 +124,7 @@ export const getCartItems = async (req: Request, res: Response) => {
           "SELECT * FROM products WHERE id = $1",
           [productId]
         );
-        return productResponse.rows[0];
+        return [productResponse.rows[0], cart_items.rows[0]];
       })
     );
     res.status(200).json({ items: response });

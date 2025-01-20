@@ -112,22 +112,30 @@ export const getCartById = async (req: Request, res: Response) => {
 export const getCartItems = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
-    const cart_items = await client.query(
-      "SELECT * FROM cart_items WHERE cart_id = $1",
-      [cartId]
-    );
+    
+    const { data: cartItems, error: cartItemsError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartId);
 
-    const productIds = cart_items.rows.map((item) => item.product_id);
-    const response = await Promise.all(
-      productIds.map(async (productId) => {
-        const productResponse = await client.query(
-          "SELECT * FROM products WHERE id = $1",
-          [productId]
-        );
-        return [productResponse.rows[0], cart_items.rows[0]];
-      })
-    );
-    res.status(200).json({ items: response });
+    if (cartItemsError) throw cartItemsError;
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(200).json({ items: [] });
+    }
+
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', cartItems.map(item => item.product_id));
+
+    if (productsError) throw productsError;
+
+    const items = products.map(product => {
+      const cartItem = cartItems.find(item => item.product_id === product.id);
+      return [product, cartItem];
+    });
+
+    res.status(200).json({ items });
   } catch (error) {
     res.status(500).json({ error: error });
   }

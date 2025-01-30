@@ -91,16 +91,19 @@ export const deleteCart = async (req: Request, res: Response) => {
 export const getCartById = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
-    //user id
-    const response = await client.query(
-      "SELECT * FROM shopping_carts WHERE user_id = $1",
-      [cartId]
-    );
-    if (response.rows.length == 0) {
+
+    const { data: cart, error } = await supabase
+      .from('shopping_carts')
+      .select('*')
+      .eq('id', cartId)
+      .single();
+
+    if (error || !cart) {
       res.status(404).json({ message: "Cart not found" });
       return;
     }
-    res.status(200).json({ cart: response.rows });
+
+    res.status(200).json({ cart });
   } catch (error) {
     res.status(500).json({
       error: error,
@@ -146,39 +149,58 @@ export const addProductToCart = async (req: Request, res: Response) => {
   try {
     const cartId = req.params.id;
     const { productId, quantity }: ICartItems = req.body;
-    const cart = await client.query(
-      "SELECT * FROM shopping_carts WHERE id = $1",
-      [cartId]
-    );
-    if (cart.rows.length == 0) {
+
+    // Check if cart exists
+    const { data: cart, error: cartError } = await supabase
+      .from('shopping_carts')
+      .select('*')
+      .eq('id', cartId)
+      .single();
+
+    if (cartError || !cart) {
       res.status(404).json({ message: "Cart not found" });
       return;
     }
-    // Check if the product already exists in the cart
-    const existingCartItem = await client.query(
-      "SELECT * FROM cart_items WHERE cart_id = $1 AND product_id = $2",
-      [cartId, productId]
-    );
-    if (existingCartItem.rows.length > 0) {
+
+    // Check if product already exists in cart
+    const { data: existingItem, error: existingError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartId)
+      .eq('product_id', productId)
+      .single();
+
+    if (existingItem) {
       res.status(400).json({ message: "Product already exists in the cart" });
       return;
     }
+
     if (quantity <= 0 || !quantity) {
       res.status(400).json({ message: "Invalid quantity" });
       return;
     }
-    const product = await client.query("SELECT * FROM products WHERE id = $1", [
-      productId,
-    ]);
-    if (product.rows.length == 0) {
+
+    // Check if product exists
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .single();
+
+    if (productError || !product) {
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    const response = await client.query(
-      "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
-      [cartId, productId, quantity]
-    );
-    res.status(201).json({ cart_item: response.rows[0] });
+
+    // Add product to cart
+    const { data: cartItem, error: insertError } = await supabase
+      .from('cart_items')
+      .insert([{ cart_id: cartId, product_id: productId, quantity }])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+    res.status(201).json({ cart_item: cartItem });
   } catch (error) {
     res.status(500).json({
       error: error,
@@ -193,28 +215,40 @@ export const deleteProductFromCart = async (req: Request, res: Response) => {
     const cartId = req.params.id;
     const productId = req.params.productId;
 
-    const cart = await client.query(
-      "SELECT * FROM shopping_carts WHERE id = $1",
-      [cartId]
-    );
-    if (cart.rows.length == 0) {
+    // Check if cart exists
+    const { data: cart, error: cartError } = await supabase
+      .from('shopping_carts')
+      .select('*')
+      .eq('id', cartId)
+      .single();
+
+    if (cartError || !cart) {
       res.status(404).json({ message: "Cart not found" });
       return;
     }
 
-    const product = await client.query(
-      "SELECT * FROM cart_items WHERE cart_id = $1 AND product_id = $2",
-      [cartId, productId]
-    );
-    if (product.rows.length == 0) {
+    // Check if product exists in cart
+    const { data: cartItem, error: itemError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartId)
+      .eq('product_id', productId)
+      .single();
+
+    if (itemError || !cartItem) {
       res.status(404).json({ message: "Product not found in cart" });
       return;
     }
 
-    await client.query(
-      "DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2",
-      [cartId, productId]
-    );
+    // Delete product from cart
+    const { error: deleteError } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('cart_id', cartId)
+      .eq('product_id', productId);
+
+    if (deleteError) throw deleteError;
+
     res.status(200).json({ message: "Product Deleted Successfully from Cart" });
   } catch (error) {
     res.status(500).json({

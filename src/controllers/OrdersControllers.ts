@@ -2,17 +2,25 @@ import { IOrders, IOrderItems } from "../types/IOrders";
 import { Request, Response } from "express";
 import { client } from "../db/posgres";
 import { OrderStatus } from "../types/EnumData";
+import supabase from "../db/db";
 
 export const getOrders = async (req: Request, res: Response) => {
     try {
-        const  user_id_cookies  = req.cookies.id;
-        if(!user_id_cookies) {
+        const user_id_cookies = req.cookies.id;
+        if (!user_id_cookies) {
             res.status(401).json({ message: "Unauthorized" });
             return;
         }
         const user_id = JSON.parse(user_id_cookies).id;
-        const response = await client.query("SELECT * FROM orders WHERE user_id = $1", [user_id]);
-        res.json(response.rows);
+        
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', user_id);
+
+        if (error) throw error;
+        
+        res.json(data);
     } catch (error) {
         res.status(500).json({ 
             err: error,
@@ -24,47 +32,64 @@ export const getOrders = async (req: Request, res: Response) => {
 // Create a new order
 export const createOrder = async (req: Request, res: Response) => {
     try {
-        const user_id_cookies  = req.cookies.id;
-        if(!user_id_cookies) {
+        const user_id_cookies = req.cookies.id;
+        if (!user_id_cookies) {
             res.status(401).json({ message: "Unauthorized" });
             return;
         }
         const user_id = JSON.parse(user_id_cookies).id;
         const { status, total_amount, shipping_address_id } = req.body;
-        //validate status
-        if(!Object.values(OrderStatus).includes(status as OrderStatus)) {
+        console.log(req.body);
+
+        if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
             res.status(400).json({ err: "Invalid status" });
             return;
         }
-        const newOrder: IOrders = {
-            user_id,
-            status,
-            total_amount,
-            shipping_address_id
-        };
-        //validate user_id
-        const userExist = await client.query("SELECT * FROM users WHERE id = $1", [user_id]);
-        if(userExist.rowCount === 0) {
+
+        // Validate user exists
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select()
+            .eq('id', user_id)
+            .single();
+
+        if (userError || !user) {
             res.status(404).json({ message: "User not found" });
             return;
         }
-        //validate shipping_address_id
-        const addressExist = await client.query("SELECT * FROM shipping_addresses WHERE id = $1", [shipping_address_id]);
-        if(addressExist.rowCount === 0) {
+
+        // Validate shipping address exists
+        const { data: address, error: addressError } = await supabase
+            .from('shipping_addresses')
+            .select()
+            .eq('id', shipping_address_id)
+            .single();
+
+        if (addressError || !address) {
             res.status(404).json({ message: "Shipping address not found" });
             return;
         }
-        const response = await client.query(
-            "INSERT INTO orders (user_id, status, total_amount, shipping_address_id) VALUES ($1, $2, $3, $4) RETURNING *",
-            [newOrder.user_id, newOrder.status, newOrder.total_amount, newOrder.shipping_address_id]
-        );
-        res.json(response.rows[0]);
+
+        // Create new order
+        const { data: newOrder, error: orderError } = await supabase
+            .from('orders')
+            .insert([{
+                user_id,
+                status,
+                total_amount,
+                shipping_address_id
+            }])
+            .select()
+            .single();
+
+        if (orderError) throw orderError;
+
+        res.json(newOrder);
     } catch (error) {
-        res.status(500).json({ 
+        res.status(500).json({
             err: error,
             message: "Internal server error"
         });
-        return;
     }
 };
 
@@ -86,24 +111,32 @@ export const updateOrder = async (req: Request, res: Response) => {
         }
 
         // Calculate total amount
-        const total_amount_result = await client.query(
-            "SELECT SUM(quantity * price_at_time) AS total FROM order_items WHERE order_id = $1",
-            [order_id]
-        );
-        const total_amount = total_amount_result.rows[0]?.total || 0;
+        const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select('quantity, price_at_time')
+            .eq('order_id', order_id);
 
-        // Check if order exists and update
-        const response = await client.query(
-            "UPDATE orders SET status = $1, total_amount = $2 WHERE id = $3 AND user_id = $4 RETURNING *",
-            [status, total_amount, order_id, user_id]
-        );
+        if (itemsError) throw itemsError;
 
-        if (response.rowCount === 0) {
+        const total_amount = orderItems?.reduce((sum, item) => 
+            sum + (item.quantity * item.price_at_time), 0) || 0;
+
+        // Update order
+        const { data: updatedOrder, error: updateError } = await supabase
+            .from('orders')
+            .update({ status, total_amount })
+            .eq('id', order_id)
+            .eq('user_id', user_id)
+            .select()
+            .single();
+
+        if (updateError) throw updateError;
+        if (!updatedOrder) {
             res.status(404).json({ message: "Order not found" });
             return;
         }
 
-        res.json(response.rows[0]);
+        res.json(updatedOrder);
     } catch (error) {
         res.status(500).json({
             err: error,
@@ -122,16 +155,23 @@ export const deleteOrder = async (req: Request, res: Response) => {
             return;
         }
         const user_id = JSON.parse(user_id_cookies).id;
-        const order_id  = req.params.id;
-        const response = await client.query(
-            "DELETE FROM orders WHERE id = $1 AND user_id = $2 RETURNING *",
-            [order_id, user_id]
-        );
-        if(response.rowCount === 0) {
+        const order_id = req.params.id;
+
+        const { data: deletedOrder, error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', order_id)
+            .eq('user_id', user_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!deletedOrder) {
             res.status(404).json({ message: "Order not found" });
             return;
         }
-        res.json({order_deleted:response.rows[0]});
+
+        res.json({ order_deleted: deletedOrder });
     } catch (error) {
         res.status(500).json({ 
             err: error,
@@ -147,20 +187,36 @@ export const getOrderById = async (req: Request, res: Response) => {
             res.status(401).json({ message: "Unauthorized" });
             return;
         }
+
         const user_id = JSON.parse(user_id_cookies).id;
-        const order_id  = req.params.id;
-        const response = await client.query(
-            "SELECT * FROM orders WHERE id = $1 AND user_id = $2",
-            [order_id, user_id]
-        );
-        if(response.rowCount === 0) {
-            res.status(404).json({ message: "Order not found" });
+        const order_id = req.params.id;
+
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*') // Explicitly specify columns or use '*'
+            .eq('id', order_id)
+            .eq('user_id', user_id)
+            .single();
+
+        if (error) {
+            res.status(400).json({ 
+                message: "Error fetching order",
+                error: error.message 
+            });
             return;
         }
-        res.status(200).json({order: response.rows[0]});
+
+        if (!data) {
+            res.status(404).json({ 
+                message: "Order not found" 
+            });
+            return;
+        }
+
+        res.status(200).json({ order: data });
     } catch (error) {
+        console.error('Order fetch error:', error);
         res.status(500).json({ 
-            err: error,
             message: "Internal server error"
         });
     }
@@ -168,43 +224,64 @@ export const getOrderById = async (req: Request, res: Response) => {
 
 export const addItemsToOrder = async (req: Request, res: Response) => {
     try {
-      const order_id = req.params.idOrder;
-      const { product_id, quantity, price_at_time } = req.body;
-  
-      if (quantity <= 0) {
-        res.status(400).json({ message: "Invalid quantity" });
-        return;
-      }
-      if (!order_id || !product_id || !quantity || !price_at_time) {
-        res.status(400).json({ message: "Invalid or missing data" });
-        return;
-      }
-  
-      const productExist = await client.query("SELECT * FROM products WHERE id = $1", [product_id]);
-      const orderExist = await client.query("SELECT * FROM orders WHERE id = $1", [order_id]);
-  
-      if (productExist.rowCount === 0) {
-        res.status(404).json({ message: "Product not found" });
-        return;
-      }
-      if (orderExist.rowCount === 0) {
-        res.status(404).json({ message: "Order not found" });
-        return;
-      }
-  
-      const response = await client.query(
-        "INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4) RETURNING *",
-        [order_id, product_id, parseInt(quantity), parseFloat(price_at_time)]
-      );
-  
-      res.status(201).json({ item: response.rows[0] });
+        const order_id = req.params.idOrder;
+        const { product_id, quantity, price_at_time } = req.body;
+
+        if (quantity <= 0) {
+            res.status(400).json({ message: "Invalid quantity" });
+            return;
+        }
+        if (!order_id || !product_id || !quantity || !price_at_time) {
+            res.status(400).json({ message: "Invalid or missing data" });
+            return;
+        }
+
+        // Check if product exists
+        const { data: product, error: productError } = await supabase
+            .from('products')
+            .select()
+            .eq('id', product_id)
+            .single();
+
+        if (productError || !product) {
+            res.status(404).json({ message: "Product not found" });
+            return;
+        }
+
+        // Check if order exists
+        const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .select()
+            .eq('id', order_id)
+            .single();
+
+        if (orderError || !order) {
+            res.status(404).json({ message: "Order not found" });
+            return;
+        }
+
+        // Insert order item
+        const { data: newItem, error: insertError } = await supabase
+            .from('order_items')
+            .insert([{
+                order_id,
+                product_id,
+                quantity: parseInt(quantity),
+                price_at_time: parseFloat(price_at_time)
+            }])
+            .select()
+            .single();
+
+        if (insertError) throw insertError;
+
+        res.status(201).json({ item: newItem });
     } catch (error) {
-      res.status(500).json({
-        err: error,
-        message: "Internal server error"
-      });
+        res.status(500).json({
+            err: error,
+            message: "Internal server error"
+        });
     }
-  };
+};
 
 export const removeItemsFromOrder = async (req: Request, res: Response) => {
     try {

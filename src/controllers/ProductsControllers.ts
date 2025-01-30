@@ -1,6 +1,4 @@
 import { Request, Response } from "express";
-import { client } from "../db/posgres";
-import { QueryResult } from "pg";
 import { IProducts } from "../types/IProducts";
 import supabase from "../db/db";
 

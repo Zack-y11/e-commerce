@@ -10,22 +10,50 @@ export const getPayments = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select('*');
+    const userCookiesId = req.cookies.id;
+    console.log("Cookie received:", userCookiesId);
 
-    if (error) {
-      throw error;
+    if (!userCookiesId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const user_id = JSON.parse(userCookiesId).id;
+
+    // First get all orders for the user
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user_id);
+
+    if (ordersError) {
+      throw ordersError;
+    }
+
+    if (!orders || orders.length === 0) {
+      res.status(200).json({ payments: [] });
+      return;
+    }
+
+    // Then get all payments for those orders
+    const orderIds = orders.map(order => order.id);
+    const { data: payments, error: paymentsError } = await supabase
+      .from('payments')
+      .select('*')
+      .in('order_id', orderIds);
+
+    if (paymentsError) {
+      throw paymentsError;
     }
 
     res.status(200).json({ payments });
-  } catch (error) {
+    } catch (error) {
     console.error("Get payments error:", error);
     res.status(500).json({
       error: "Failed to get payments",
       details: error instanceof Error ? error.message : "Unknown error",
     });
-  }
+    }
 };
 
 export const createPayment = async (

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { client } from "../db/posgres";
 import ICategory from "../types/ICategory";
+import supabase from "../db/db";
 
 export const createCategory = async (req: Request, res: Response) => {
   try {
@@ -15,13 +16,17 @@ export const createCategory = async (req: Request, res: Response) => {
         .json({ message: "Bad Request: Missing or invalid required data" });
       return;
     }
-    const response = await client.query(
-      "INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING *   ",
-      [name, description]
-    );
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name, description }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
     res.status(201).json({
       message: "Category Created Successfully",
-      body: { category: response.rows[0] },
+      body: { category: data },
     });
   } catch (error) {
     console.log(error);
@@ -83,11 +88,15 @@ export const getCategory = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing required data" });
       return;
     }
-    const response = await client.query(
-      "SELECT * FROM categories WHERE id = $1",
-      [req.params.id]
-    );
-    res.status(200).json({ category: response.rows[0] });
+    const { data, error } = await supabase
+      .from('categories')
+      .select()
+      .eq('id', req.params.id)
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({ category: data });
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -98,8 +107,13 @@ export const getCategory = async (req: Request, res: Response) => {
 //get all categories
 export const getCategories = async (req: Request, res: Response) => {
   try {
-    const response = await client.query("SELECT * FROM categories");
-    res.status(200).json({ categories: response.rows });
+    const { data, error } = await supabase
+      .from('categories')
+      .select();
+
+    if (error) throw error;
+
+    res.status(200).json({ categories: data });
   } catch (error) {
     console.log(error);
     res.status(500).json({

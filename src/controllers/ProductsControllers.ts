@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { client } from "../db/posgres";
 import { QueryResult } from "pg";
 import { IProducts } from "../types/IProducts";
+import supabase from "../db/db";
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -20,7 +21,8 @@ export const createProduct = async (req: Request, res: Response) => {
       weight,
       dimensions,
       is_active,
-    } : IProducts= req.body;
+    }: IProducts = req.body;
+
     if (
       !sku ||
       !name ||
@@ -34,19 +36,25 @@ export const createProduct = async (req: Request, res: Response) => {
         .json({ message: "Bad Request: Missing or invalid required data" });
       return;
     }
-    const existingProduct = await client.query(
-      "SELECT * FROM products WHERE sku = $1",
-      [sku]
-    );
-    if (existingProduct.rows.length > 0) {
+
+    // Check for existing product using Supabase
+    const { data: existingProduct } = await supabase
+      .from("products")
+      .select()
+      .eq('sku', sku)
+      .single();
+
+    if (existingProduct) {
       res
         .status(400)
         .json({ message: "Product with the same SKU already exists" });
       return;
     }
-    const response: QueryResult = await client.query(
-      "INSERT INTO products (sku, name, description, price, stock_quantity, category_id, image_url, weight, dimensions, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
-      [
+
+    // Insert new product
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
         sku,
         name,
         description,
@@ -57,14 +65,18 @@ export const createProduct = async (req: Request, res: Response) => {
         weight,
         dimensions,
         is_active,
-      ]
-    );
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     res.status(201).json({
       message: "Product Created Successfully",
-      body: { product: response.rows[0] },
+      body: { product: data },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       message: "Internal Server Error",
     });
@@ -89,6 +101,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       dimensions,
       is_active,
     }: IProducts = req.body;
+
     if (
       !sku ||
       !name ||
@@ -102,9 +115,10 @@ export const updateProduct = async (req: Request, res: Response) => {
         .json({ message: "Bad Request: Missing or invalid required data" });
       return;
     }
-    const response: QueryResult = await client.query(
-      "UPDATE products SET name = $1, description = $2, price = $3, stock_quantity = $4, category_id = $5, image_url = $6, weight = $7, dimensions = $8, is_active = $9 WHERE sku = $10 RETURNING *",
-      [
+
+    const { data, error } = await supabase
+      .from("products")
+      .update({
         name,
         description,
         price,
@@ -114,12 +128,16 @@ export const updateProduct = async (req: Request, res: Response) => {
         weight,
         dimensions,
         is_active,
-        sku,
-      ]
-    );
+      })
+      .eq("sku", sku)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     res.status(200).json({
       message: "Product Updated Successfully",
-      body: { product: response.rows[0] },
+      body: { product: data },
     });
   } catch (error) {
     console.log(error);
@@ -128,7 +146,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     });
   }
 };
-//delete product
+
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const sku = req.params.sku;
@@ -136,10 +154,14 @@ export const deleteProduct = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing SKU parameter" });
       return;
     }
-    const response: QueryResult = await client.query(
-      "DELETE FROM products WHERE sku = $1",
-      [sku]
-    );
+
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("sku", sku);
+
+    if (error) throw error;
+
     res.status(200).json({ message: "Product Deleted Successfully" });
   } catch (error) {
     console.log(error);
@@ -154,16 +176,19 @@ export const getProduct = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing SKU parameter" });
       return;
     }
-    const response: QueryResult = await client.query(
-      `SELECT p.*, c.name as category_name 
-       FROM products p 
-       JOIN categories c ON p.category_id = c.id 
-       WHERE p.sku = $1`,
-      [sku]
-    );
-    res
-      .status(200)
-      .json({ message: "Product Data", body: { product: response.rows[0] } });
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, categories!inner(name)')
+      .eq('sku', sku)
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({ 
+      message: "Product Data", 
+      body: { product: data } 
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -172,8 +197,13 @@ export const getProduct = async (req: Request, res: Response) => {
 //get all products
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const response: QueryResult = await client.query("SELECT * FROM products");
-    res.status(200).json({ products: response.rows });
+    const { data, error } = await supabase
+      .from("products")
+      .select("*");
+
+    if (error) throw error;
+
+    res.status(200).json({ products: data });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -187,14 +217,15 @@ export const getProductsByCategory = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Bad Request: Missing category parameter" });
       return;
     }
-    const response: QueryResult = await client.query(
-      `SELECT p.*, c.name as category_name 
-       FROM products p 
-       JOIN categories c ON p.category_id = c.id 
-       WHERE c.name = $1`,
-      [category]
-    );
-    res.status(200).json({ products: response.rows });
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, categories!inner(name)')
+      .eq('categories.name', category);
+
+    if (error) throw error;
+
+    res.status(200).json({ products: data });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });

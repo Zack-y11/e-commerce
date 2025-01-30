@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { client } from "../db/posgres";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";

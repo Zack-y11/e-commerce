@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { client } from "../db/posgres";
 import stripe from "../helpers/Stripe.Services";
 import { configDotenv } from "dotenv";
 import supabase from "../db/db";
@@ -225,16 +224,22 @@ export const getPaymentById = async (
   try {
     const id = req.params.id;
 
-    const result = await client.query("SELECT * FROM payments WHERE id = $1", [
-      id,
-    ]);
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (result.rows.length === 0) {
+    if (error) {
+      throw error;
+    }
+
+    if (!payment) {
       res.status(404).json({ message: "Payment not found" });
       return;
     }
 
-    res.status(200).json({ payment: result.rows[0] });
+    res.status(200).json({ payment });
   } catch (error) {
     console.error("Get payment by ID error:", error);
     res.status(500).json({

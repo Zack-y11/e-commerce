@@ -1,4 +1,4 @@
-import { IOrders, IOrderItems } from "../types/IOrders";
+
 import { Request, Response } from "express";
 import { client } from "../db/posgres";
 import { OrderStatus } from "../types/EnumData";

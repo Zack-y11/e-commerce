@@ -10,6 +10,7 @@ export const getPayments = async (
   res: Response
 ): Promise<void> => {
   try {
+
     const userCookiesId = req.cookies.id;
     console.log("Cookie received:", userCookiesId);
 
@@ -229,6 +230,7 @@ export const updatePayment = async (
       throw error;
     }
 
+
     if (!payment) {
       res.status(404).json({ message: "Payment not found" });
       return;
@@ -257,11 +259,9 @@ export const getPaymentById = async (
       .select('*')
       .eq('id', id)
       .single();
-
     if (error) {
       throw error;
     }
-
     if (!payment) {
       res.status(404).json({ message: "Payment not found" });
       return;
@@ -289,6 +289,7 @@ export const deletePayment = async (
       .from('payments')
       .delete()
       .eq('id', id);
+
 
     if (error) {
       throw error;

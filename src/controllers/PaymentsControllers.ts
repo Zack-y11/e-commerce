@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import stripe from "../helpers/Stripe.Services";
-import { configDotenv } from "dotenv";
+import { configDotenv, parse } from "dotenv";
 import supabase from "../db/db";
 configDotenv();
 
@@ -222,7 +222,10 @@ export const getPaymentById = async (
   res: Response
 ): Promise<void> => {
   try {
-    const id = req.params.id;
+    const id = req.cookies.id;
+    const parse = JSON.stringify(id);
+
+
 
     const { data: payment, error } = await supabase
       .from('payments')
@@ -244,6 +247,55 @@ export const getPaymentById = async (
     console.error("Get payment by ID error:", error);
     res.status(500).json({
       error: "Failed to get payment",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+//get payments by user
+export const getPaymentsByUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const user_id_cookies = req.cookies.id;
+    if(!user_id_cookies) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+
+    const user_id = JSON.parse(user_id_cookies).id;
+
+    // First get all orders for this user
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user_id);
+
+    if (ordersError) {
+      throw ordersError;
+    }
+
+    if (!orders || orders.length === 0) {
+      res.status(200).json({ payments: [] });
+      return;
+    }
+
+    // Get all payments for these orders
+    const orderIds = orders.map(order => order.id);
+    const { data: payments, error: paymentsError } = await supabase
+      .from('payments')
+      .select('*')
+      .in('order_id', orderIds);
+
+    if (paymentsError) {
+      throw paymentsError;
+    }
+
+    res.status(200).json({ payments: payments || [] });
+  } catch (error) {
+    console.error("Get payments by user error:", error);
+    res.status(500).json({
+      error: "Failed to get payments",
       details: error instanceof Error ? error.message : "Unknown error",
     });
   }

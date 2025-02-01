@@ -123,7 +123,8 @@ export const getCartItems = async (req: Request, res: Response) => {
 
     if (cartItemsError) throw cartItemsError;
     if (!cartItems || cartItems.length === 0) {
-      return res.status(200).json({ items: [] });
+      res.status(200).json({ items: [] });
+      return
     }
 
     const { data: products, error: productsError } = await supabase
@@ -135,7 +136,8 @@ export const getCartItems = async (req: Request, res: Response) => {
 
     const items = products.map(product => {
       const cartItem = cartItems.find(item => item.product_id === product.id);
-      return [product, cartItem];
+      [product, cartItem];
+      return
     });
 
     res.status(200).json({ items });

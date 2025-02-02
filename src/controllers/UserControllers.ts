@@ -64,6 +64,7 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
     const { email, password }: User = req.body;
+    console.log(req.body);
 
     const { data: user, error } = await supabase
       .from("users")
@@ -92,14 +93,18 @@ export const login = async (req: Request, res: Response) => {
     // Set the JWT in an HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      secure: true, // Required for HTTPS
+      sameSite: 'none', // Required for cross-domain
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
+
     res.cookie("id", JSON.stringify({ id: user.id }), {
       httpOnly: false,
       secure: true,
-      sameSite: "strict",
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000
     });
+
 
     res.status(200).json({ message: "Login Successful", token, user });
   } catch (e) {

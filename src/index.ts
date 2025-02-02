@@ -18,8 +18,11 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
 app.use(cors({
-  origin: 'http://localhost:8080', // Replace with your frontend URL
-  credentials: true
+  origin: ['http://localhost:8080', 'https://preview--user-authentication-oasis.lovable.app'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Set-Cookie']
 }));
 
 

@@ -136,8 +136,8 @@ export const getCartItems = async (req: Request, res: Response) => {
 
     const items = products.map(product => {
       const cartItem = cartItems.find(item => item.product_id === product.id);
-      [product, cartItem];
-      return
+      return [product, cartItem];
+      
     });
 
     res.status(200).json({ items });

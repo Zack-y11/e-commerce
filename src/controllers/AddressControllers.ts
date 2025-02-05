@@ -1,6 +1,5 @@
 import IShippingAddress from "../types/IAddress";
 import { Request, Response } from "express";
-import { client } from "../db/posgres";
 import supabase from "../db/db";
 
 //shipping_addresses CRUD

@@ -5,5 +5,7 @@ declare namespace NodeJS{
         STRIPE_WEBHOOK_SECRET: string
         SUPABASE_URL: string;
         SUPABASE_KEY: string;
+        LOVABLE_URL: string;
+        FRONTEND_URL: string;
     }
 }

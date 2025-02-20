@@ -16,10 +16,10 @@ router.post("/products", auth, createProduct);
 router.put("/products/:sku", auth, updateProduct);
 router.delete("/products/:sku", auth, deleteProduct);
 //public route
-router.get("/products/:sku", auth, getProduct);
-router.get("/products", auth, getProducts);
+router.get("/products/:sku", getProduct);
+router.get("/products", getProducts);
 ///category/Sample%20Category
-router.get("/products/category/:category", auth, getProductsByCategory);
+router.get("/products/category/:category", getProductsByCategory);
 
 
 

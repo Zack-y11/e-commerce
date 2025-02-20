@@ -16,7 +16,7 @@ router.put("/categories/:id", auth, updateCategory);
 router.delete("/categories/:id", auth, deleteCategory);
 
 //public routes
-router.get("/categories/:id", auth, getCategory);
-router.get("/categories", auth, getCategories);
+router.get("/categories/:id", getCategory);
+router.get("/categories", getCategories);
 
 export default router;
